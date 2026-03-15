@@ -7,18 +7,21 @@
     (modulesPath + "/profiles/qemu-guest.nix")
   ];
 
-  boot.loader.grub = {
-    enable = true;
-    device = "/dev/sda";
-  };
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
 
   boot.initrd.availableKernelModules = [ "ata_piix" "uhci_hcd" "virtio_pci" "virtio_scsi" "sd_mod" "sr_mod" ];
   boot.initrd.kernelModules = [ ];
   boot.kernelModules = [ "kvm-intel" "tun" ];  # tun needed for Zscaler (zcctun0) and Tailscale
 
   fileSystems."/" = {
-    device = "/dev/sda1";
+    device = "/dev/disk/by-label/nixos";
     fsType = "ext4";
+  };
+
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-label/boot";
+    fsType = "vfat";
   };
 
   swapDevices = [ ];
