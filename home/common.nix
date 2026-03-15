@@ -19,6 +19,11 @@
     }];
   };
 
+  # Allowed signers for git SSH signature verification
+  home.file.".config/git/allowed_signers".text = ''
+    jeroen.gordijn@gmail.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBSSGbehh9Y6I9DSejnaNUGhXkinx3QT66NLtsUu/H1n
+  '';
+
   programs.git = {
     enable = true;
     userName = "Jeroen Gordijn";
@@ -58,6 +63,7 @@
 
     extraConfig = {
       credential.username = "jgordijn";
+      "gpg \"ssh\"".allowedSignersFile = "~/.config/git/allowed_signers";
       color = {
         ui = "auto";
         status = "auto";

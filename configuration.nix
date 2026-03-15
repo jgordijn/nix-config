@@ -31,6 +31,9 @@
     isNormalUser = true;
     extraGroups = [ "wheel" ];
     shell = pkgs.zsh;
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBSSGbehh9Y6I9DSejnaNUGhXkinx3QT66NLtsUu/H1n"
+    ];
   };
 
   # Allow wheel group to sudo without password
