@@ -18,6 +18,14 @@
           home-manager.nixosModules.home-manager
         ];
       };
+
+      vpn-proxy = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          ./hosts/vpn-proxy/configuration.nix
+          home-manager.nixosModules.home-manager
+        ];
+      };
     };
   };
 }
