@@ -14,6 +14,11 @@
   # Enable flakes
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
+  # Bootloader
+  boot.loader.grub.enable = true;
+  boot.loader.grub.device = "/dev/sda";
+
+
   networking.hostName = "vpn-proxy";
 
   time.timeZone = "Europe/Amsterdam";
