@@ -50,6 +50,42 @@
     tcpdump
     traceroute
     ethtool
+
+    # FHS environment for running Zscaler Client Connector
+    # Zscaler is proprietary and not in nixpkgs.
+    # After installing the .deb, run `zscaler-env` to enter the sandbox.
+    (buildFHSEnv {
+      name = "zscaler-env";
+      targetPkgs = pkgs: with pkgs; [
+        zlib
+        openssl
+        nss
+        nspr
+        dbus
+        glib
+        gtk3
+        atk
+        pango
+        cairo
+        gdk-pixbuf
+        xorg.libX11
+        xorg.libXcomposite
+        xorg.libXdamage
+        xorg.libXext
+        xorg.libXfixes
+        xorg.libXrandr
+        xorg.libxcb
+        libdrm
+        mesa
+        alsa-lib
+        at-spi2-atk
+        at-spi2-core
+        cups
+        expat
+        libxkbcommon
+      ];
+      runScript = "bash";
+    })
   ];
 
   programs.zsh.enable = true;
@@ -122,60 +158,6 @@
       "--netfilter-mode=off"
     ];
   };
-
-  # ---------- Zscaler Client Connector ----------
-  #
-  # Zscaler is proprietary and not in nixpkgs.
-  # Install manually after first boot:
-  #
-  #   1. SCP the .deb to this machine:
-  #      scp ~/Downloads/zscaler.deb jgordijn@vpn-proxy.local:~/
-  #
-  #   2. On the VM, enter the FHS environment and install:
-  #      zscaler-env
-  #      sudo dpkg -i ~/zscaler.deb || sudo apt-get install -f -y
-  #
-  #   3. Use the Proxmox console (GUI) to open Zscaler and authenticate.
-  #
-  #   4. Verify routes: ip route show | grep zcctun
-  #
-  # The FHS sandbox gives Zscaler the standard Linux filesystem layout it expects.
-  #
-  environment.systemPackages = lib.mkAfter [
-    (pkgs.buildFHSEnv {
-      name = "zscaler-env";
-      targetPkgs = pkgs: with pkgs; [
-        zlib
-        openssl
-        nss
-        nspr
-        dbus
-        glib
-        gtk3
-        atk
-        pango
-        cairo
-        gdk-pixbuf
-        xorg.libX11
-        xorg.libXcomposite
-        xorg.libXdamage
-        xorg.libXext
-        xorg.libXfixes
-        xorg.libXrandr
-        xorg.libxcb
-        libdrm
-        mesa
-        alsa-lib
-        at-spi2-atk
-        at-spi2-core
-        cups
-        expat
-        libxkbcommon
-      ];
-      runScript = "bash";
-    })
-  ];
-
   # ---------- iptables: NAT & Forwarding (tailscale0 ↔ zcctun0) ----------
   #
   # These rules forward corporate traffic from Tailscale into Zscaler's tunnel.
