@@ -5,6 +5,25 @@
   ...
 }:
 
+let
+  # Shared library dependencies for Zscaler binaries
+  zscalerLibs = with pkgs; [
+    zlib openssl nss nspr dbus dbus-glib glib gcc-unwrapped.lib
+    gtk3 atk pango cairo gdk-pixbuf
+    libX11 libXcomposite libXdamage libXext libXfixes libXrandr libxcb
+    libdrm mesa alsa-lib at-spi2-atk at-spi2-core cups expat libxkbcommon
+    libpcap curl
+  ];
+
+  # Additional Qt5 libs for ZSTray GUI
+  zscalerTrayLibs = zscalerLibs ++ (with pkgs.qt5; [
+    qtbase qtwebengine qtwebchannel qtwebsockets
+  ]);
+
+  zscalerLibPath = lib.makeLibraryPath zscalerLibs;
+  zscalerTrayLibPath = lib.makeLibraryPath zscalerTrayLibs;
+in
+
 {
   imports = [
     ./hardware-configuration.nix
@@ -78,43 +97,31 @@
       echo "Start it with: sudo systemctl start zscaler"
     '')
 
-    # Interactive FHS shell for Zscaler debugging
-    (buildFHSEnv {
-      name = "zscaler-env";
-      targetPkgs = pkgs: with pkgs; [
-        zlib openssl nss nspr dbus glib gtk3 atk pango cairo gdk-pixbuf
-        libX11 libXcomposite libXdamage libXext libXfixes libXrandr libxcb
-        libdrm mesa alsa-lib at-spi2-atk at-spi2-core cups expat libxkbcommon
-      ];
-      runScript = "bash";
-    })
+    # Interactive shell for Zscaler debugging
+    (pkgs.writeShellScriptBin "zscaler-env" ''
+      export LD_LIBRARY_PATH="${zscalerTrayLibPath}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+      exec bash "$@"
+    '')
   ];
 
-  # FHS environment for Zscaler (proprietary, needs standard Linux lib layout)
+  # nix-ld provides /lib64/ld-linux-x86-64.so.2 so unpatched binaries can run
   programs.nix-ld.enable = true;
 
-  # Zscaler service daemon (zsaservice) inside FHS sandbox
+  # Zscaler service daemon (zsaservice)
   systemd.services.zscaler = {
     description = "Zscaler Client Connector (zsaservice)";
     after = [ "network-online.target" "dbus.service" ];
     wants = [ "network-online.target" ];
     wantedBy = [ "multi-user.target" ];
+    environment = {
+      LD_LIBRARY_PATH = zscalerLibPath;
+    };
     serviceConfig = {
       Type = "simple";
       Restart = "on-failure";
       RestartSec = 10;
       ExecStartPre = "${pkgs.bash}/bin/bash -c 'test -x /opt/zscaler/bin/zsaservice'";
-      ExecStart = toString (pkgs.buildFHSEnv {
-        name = "zscaler-run";
-        targetPkgs = pkgs: with pkgs; [
-          zlib openssl nss nspr dbus dbus-glib glib gcc-unwrapped.lib
-          gtk3 atk pango cairo gdk-pixbuf
-          libX11 libXcomposite libXdamage libXext libXfixes libXrandr libxcb
-          libdrm mesa alsa-lib at-spi2-atk at-spi2-core cups expat libxkbcommon
-          libpcap curl jq iproute2 nettools
-        ];
-        runScript = "/opt/zscaler/bin/zsaservice";
-      }) + "/bin/zscaler-run";
+      ExecStart = "/opt/zscaler/bin/zsaservice";
     };
   };
 
@@ -126,6 +133,7 @@
     wantedBy = [ "multi-user.target" ];
     environment = {
       DISPLAY = ":0";
+      LD_LIBRARY_PATH = zscalerTrayLibPath;
     };
     serviceConfig = {
       Type = "simple";
@@ -133,17 +141,7 @@
       Restart = "on-failure";
       RestartSec = 10;
       ExecStartPre = "${pkgs.bash}/bin/bash -c 'test -x /opt/zscaler/bin/ZSTray.Deb'";
-      ExecStart = toString (pkgs.buildFHSEnv {
-        name = "zscaler-tray";
-        targetPkgs = pkgs: with pkgs; [
-          zlib openssl nss nspr dbus dbus-glib glib gcc-unwrapped.lib
-          gtk3 atk pango cairo gdk-pixbuf
-          libX11 libXcomposite libXdamage libXext libXfixes libXrandr libxcb
-          libdrm mesa alsa-lib at-spi2-atk at-spi2-core cups expat libxkbcommon
-          qt5.qtbase qt5.qtwebengine qt5.qtwebchannel qt5.qtwebsockets
-        ];
-        runScript = "/opt/zscaler/bin/ZSTray.Deb";
-      }) + "/bin/zscaler-tray";
+      ExecStart = "/opt/zscaler/bin/ZSTray.Deb";
     };
   };
 
