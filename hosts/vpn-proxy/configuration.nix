@@ -175,14 +175,10 @@
   services.xserver = {
     enable = true;
     desktopManager.xfce.enable = true;
-    displayManager.lightdm = {
-      enable = true;
-      autoLogin = {
-        enable = true;
-        user = "jgordijn";
-        timeout = 0;
-      };
-    };
+  };
+  services.displayManager.autoLogin = {
+    enable = true;
+    user = "jgordijn";
   };
 
   # ---------- IP Forwarding ----------
