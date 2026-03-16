@@ -15,7 +15,7 @@ let
     libpcap curl
   ];
 
-  zscalerLibPath = lib.makeLibraryPath zscalerLibs;
+  zscalerLibPath = lib.makeLibraryPath zscalerLibs + ":/opt/zscaler/lib";
 in
 
 {
