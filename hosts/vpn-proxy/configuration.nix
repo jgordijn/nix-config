@@ -103,6 +103,10 @@
   # ---------- SSH ----------
   services.openssh.enable = true;
 
+  # ---------- Proxmox integration ----------
+  services.qemuGuest.enable = true;    # clean shutdown, IP display, memory ballooning, snapshots
+  services.fstrim.enable = true;       # trim support for LVM thinpool disk with Discard
+
   # ---------- mDNS (hostname resolution) ----------
   services.avahi = {
     enable = true;
