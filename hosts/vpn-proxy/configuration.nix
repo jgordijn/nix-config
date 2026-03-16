@@ -205,7 +205,12 @@
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStart = "${pkgs.ethtool}/bin/ethtool -K eth0 rx-udp-gro-forwarding on rx-gro-list off";
+      ExecStart = pkgs.writeShellScript "tailscale-udp-gro" ''
+        iface=$(${pkgs.iproute2}/bin/ip -o route get 1.1.1.1 | ${pkgs.gawk}/bin/awk '{print $5; exit}')
+        if [ -n "$iface" ]; then
+          ${pkgs.ethtool}/bin/ethtool -K "$iface" rx-udp-gro-forwarding on rx-gro-list off || true
+        fi
+      '';
     };
   };
   system.stateVersion = "25.11";
