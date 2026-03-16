@@ -179,6 +179,22 @@ in
     user = "jgordijn";
   };
 
+  # Disable screen lock (passwordless user)
+  services.xserver.xautolock.enable = false;
+  programs.xfconf.enable = true;  # needed for xfce settings
+  environment.etc."xdg/xfce4/kiosk/kioskrc".text = ''
+    [xfce4-session]
+    SaveSession=NONE
+    [xfce4-power-manager]
+    LockScreen=NONE
+    [xfce4-screensaver]
+    Lock=NONE
+  '';
+  # Disable light-locker (XFCE's default screen locker)
+  environment.etc."xdg/autostart/light-locker.desktop".text = ''
+    [Desktop Entry]
+    Hidden=true
+  '';
   # ---------- IP Forwarding ----------
   boot.kernel.sysctl = {
     "net.ipv4.ip_forward" = 1;
