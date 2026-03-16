@@ -14,9 +14,9 @@
   # Enable flakes
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
-  # Bootloader
-  boot.loader.grub.enable = true;
-  boot.loader.grub.device = "/dev/sda";
+  # Bootloader (EFI)
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
 
 
   networking.hostName = "vpn-proxy";
