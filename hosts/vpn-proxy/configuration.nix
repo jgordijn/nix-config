@@ -88,29 +88,57 @@
   # FHS environment for Zscaler (proprietary, needs standard Linux lib layout)
   programs.nix-ld.enable = true;
 
-  # Zscaler auto-start service inside FHS sandbox
+  # Zscaler service daemon (zsaservice) inside FHS sandbox
   systemd.services.zscaler = {
-    description = "Zscaler Client Connector";
-    after = [ "network-online.target" "display-manager.service" ];
+    description = "Zscaler Client Connector (zsaservice)";
+    after = [ "network-online.target" "dbus.service" ];
     wants = [ "network-online.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "simple";
+      Restart = "on-failure";
+      RestartSec = 10;
+      ExecStartPre = "${pkgs.bash}/bin/bash -c 'test -x /opt/zscaler/bin/zsaservice'";
+      ExecStart = toString (pkgs.buildFHSEnv {
+        name = "zscaler-run";
+        targetPkgs = pkgs: with pkgs; [
+          zlib openssl nss nspr dbus dbus-glib glib gcc-unwrapped.lib
+          gtk3 atk pango cairo gdk-pixbuf
+          libX11 libXcomposite libXdamage libXext libXfixes libXrandr libxcb
+          libdrm mesa alsa-lib at-spi2-atk at-spi2-core cups expat libxkbcommon
+          libpcap curl jq iproute2 nettools
+        ];
+        runScript = "/opt/zscaler/bin/zsaservice";
+      }) + "/bin/zscaler-run";
+    };
+  };
+
+  # Zscaler GUI tray (ZSTray) — runs as user for Zscaler authentication
+  systemd.services.zscaler-tray = {
+    description = "Zscaler Tray (GUI)";
+    after = [ "zscaler.service" "display-manager.service" ];
+    wants = [ "zscaler.service" ];
     wantedBy = [ "multi-user.target" ];
     environment = {
       DISPLAY = ":0";
     };
     serviceConfig = {
       Type = "simple";
+      User = "jgordijn";
       Restart = "on-failure";
       RestartSec = 10;
-      ExecStartPre = "${pkgs.bash}/bin/bash -c 'test -x /opt/zscaler/bin/ZscalerClientConnector'";
+      ExecStartPre = "${pkgs.bash}/bin/bash -c 'test -x /opt/zscaler/bin/ZSTray.Deb'";
       ExecStart = toString (pkgs.buildFHSEnv {
-        name = "zscaler-run";
+        name = "zscaler-tray";
         targetPkgs = pkgs: with pkgs; [
-          zlib openssl nss nspr dbus glib gtk3 atk pango cairo gdk-pixbuf
+          zlib openssl nss nspr dbus dbus-glib glib gcc-unwrapped.lib
+          gtk3 atk pango cairo gdk-pixbuf
           libX11 libXcomposite libXdamage libXext libXfixes libXrandr libxcb
           libdrm mesa alsa-lib at-spi2-atk at-spi2-core cups expat libxkbcommon
+          qt5.qtbase qt5.qtwebengine qt5.qtwebchannel qt5.qtwebsockets
         ];
-        runScript = "/opt/zscaler/bin/ZscalerClientConnector";
-      }) + "/bin/zscaler-run";
+        runScript = "/opt/zscaler/bin/ZSTray.Deb";
+      }) + "/bin/zscaler-tray";
     };
   };
 
