@@ -57,42 +57,62 @@
     traceroute
     ethtool
 
-    # FHS environment for running Zscaler Client Connector
-    # Zscaler is proprietary and not in nixpkgs.
-    # After installing the .deb, run `zscaler-env` to enter the sandbox.
+    # Zscaler installer script: download the .deb, then run `install-zscaler <path-to.deb>`
+    (pkgs.writeShellScriptBin "install-zscaler" ''
+      set -euo pipefail
+      if [ $# -ne 1 ] || [ ! -f "$1" ]; then
+        echo "Usage: install-zscaler <path-to-zscaler.deb>"
+        exit 1
+      fi
+      tmp=$(mktemp -d)
+      ${pkgs.dpkg}/bin/dpkg-deb -x "$1" "$tmp"
+      sudo mkdir -p /opt/zscaler
+      sudo cp -a "$tmp/opt/zscaler/." /opt/zscaler/
+      rm -rf "$tmp"
+      echo "Zscaler installed to /opt/zscaler"
+      echo "Start it with: sudo systemctl start zscaler"
+    '')
+
+    # Interactive FHS shell for Zscaler debugging
     (buildFHSEnv {
       name = "zscaler-env";
       targetPkgs = pkgs: with pkgs; [
-        zlib
-        openssl
-        nss
-        nspr
-        dbus
-        glib
-        gtk3
-        atk
-        pango
-        cairo
-        gdk-pixbuf
-        libX11
-        libXcomposite
-        libXdamage
-        libXext
-        libXfixes
-        libXrandr
-        libxcb
-        libdrm
-        mesa
-        alsa-lib
-        at-spi2-atk
-        at-spi2-core
-        cups
-        expat
-        libxkbcommon
+        zlib openssl nss nspr dbus glib gtk3 atk pango cairo gdk-pixbuf
+        libX11 libXcomposite libXdamage libXext libXfixes libXrandr libxcb
+        libdrm mesa alsa-lib at-spi2-atk at-spi2-core cups expat libxkbcommon
       ];
       runScript = "bash";
     })
   ];
+
+  # FHS environment for Zscaler (proprietary, needs standard Linux lib layout)
+  programs.nix-ld.enable = true;
+
+  # Zscaler auto-start service inside FHS sandbox
+  systemd.services.zscaler = {
+    description = "Zscaler Client Connector";
+    after = [ "network-online.target" "display-manager.service" ];
+    wants = [ "network-online.target" ];
+    wantedBy = [ "multi-user.target" ];
+    environment = {
+      DISPLAY = ":0";
+    };
+    serviceConfig = {
+      Type = "simple";
+      Restart = "on-failure";
+      RestartSec = 10;
+      ExecStartPre = "${pkgs.bash}/bin/bash -c 'test -x /opt/zscaler/bin/ZscalerClientConnector'";
+      ExecStart = toString (pkgs.buildFHSEnv {
+        name = "zscaler-run";
+        targetPkgs = pkgs: with pkgs; [
+          zlib openssl nss nspr dbus glib gtk3 atk pango cairo gdk-pixbuf
+          libX11 libXcomposite libXdamage libXext libXfixes libXrandr libxcb
+          libdrm mesa alsa-lib at-spi2-atk at-spi2-core cups expat libxkbcommon
+        ];
+        runScript = "/opt/zscaler/bin/ZscalerClientConnector";
+      }) + "/bin/zscaler-run";
+    };
+  };
 
   programs.zsh.enable = true;
 
