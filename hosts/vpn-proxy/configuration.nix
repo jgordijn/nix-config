@@ -15,7 +15,13 @@ let
     libpcap curl
   ];
 
+  # Additional Qt5 libs for ZSTray GUI
+  zscalerTrayLibs = zscalerLibs ++ (with pkgs.qt5; [
+    qtbase qtwebengine qtwebchannel qtwebsockets
+  ]);
+
   zscalerLibPath = lib.makeLibraryPath zscalerLibs + ":/opt/zscaler/lib";
+  zscalerTrayLibPath = lib.makeLibraryPath zscalerTrayLibs + ":/opt/zscaler/lib";
 in
 
 {
@@ -26,6 +32,11 @@ in
 
   # Enable flakes
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
+  # Allow insecure Qt5 WebEngine (EOL but required by Zscaler GUI tray)
+  nixpkgs.config.permittedInsecurePackages = [
+    "qtwebengine-5.15.19"
+  ];
 
   # Bootloader (EFI)
   boot.loader.systemd-boot.enable = true;
@@ -111,6 +122,26 @@ in
       RestartSec = 10;
       ExecStartPre = "${pkgs.bash}/bin/bash -c 'test -x /opt/zscaler/bin/zsaservice'";
       ExecStart = "/opt/zscaler/bin/zsaservice";
+    };
+  };
+
+  # Zscaler GUI tray (ZSTray) — runs as user for Zscaler authentication
+  systemd.services.zscaler-tray = {
+    description = "Zscaler Tray (GUI)";
+    after = [ "zscaler.service" "display-manager.service" ];
+    wants = [ "zscaler.service" ];
+    wantedBy = [ "multi-user.target" ];
+    environment = {
+      DISPLAY = ":0";
+      LD_LIBRARY_PATH = zscalerTrayLibPath;
+    };
+    serviceConfig = {
+      Type = "simple";
+      User = "jgordijn";
+      Restart = "on-failure";
+      RestartSec = 10;
+      ExecStartPre = "${pkgs.bash}/bin/bash -c 'test -x /opt/zscaler/bin/ZSTray.Deb'";
+      ExecStart = "/opt/zscaler/bin/ZSTray.Deb";
     };
   };
 
