@@ -51,6 +51,7 @@
     gnugrep
     gnused
     vim
+    firefox
     iptables
     tcpdump
     traceroute
